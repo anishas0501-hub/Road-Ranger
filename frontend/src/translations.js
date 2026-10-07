@@ -46,7 +46,7 @@ export const translations = {
     reportSuccess: "Report Submitted Successfully!",
     ticketId: "Reference Ticket ID",
     statusReported: "Status: Awaiting PWD Inspection",
-    citizenPoints: "+25 Road Ranger Civic Points Earned! 🎖️",
+    citizenPoints: "+25 Civic Contribution Points Awarded",
     viewAnother: "Submit Another Report",
     backToHome: "Back to Home",
     
@@ -147,7 +147,7 @@ export const translations = {
     reportSuccess: "রিপোর্ত মায়পাক্না থাখ্রে!",
     ticketId: "রিফরেন্স তিকেত নম্বর",
     statusReported: "স্তেতস: PWD না য়েংশিন্নবা ঙাইরি",
-    citizenPoints: "+২৫ রোড রেঞ্জার সিবিক পোইন্ট ফংলে! 🎖️",
+    citizenPoints: "+২৫ সিবিক পোইন্ট ফংলে",
     viewAnother: "অতোপ্পা রিপোর্ত অমুক থাবা",
     backToHome: "হোমদা হনবা",
     

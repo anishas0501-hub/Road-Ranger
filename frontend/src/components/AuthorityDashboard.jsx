@@ -148,6 +148,17 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
     return desc.slice(0, 58) + "...";
   };
 
+  // Helper to ensure valid, accessible image URLs with reliable fallback
+  const resolveImageUrl = (url) => {
+    if (!url || url.includes("example.com")) {
+      return "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=1200&auto=format&fit=crop&q=80";
+    }
+    if (url.startsWith("/uploads/")) {
+      return `${API_BASE}${url}`;
+    }
+    return url;
+  };
+
   // Filtered reports
   const filteredReports = reports.filter((r) => {
     const matchesSearch = 
@@ -256,13 +267,13 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
             className={`filter-btn ${filterType === 'critical' ? 'active' : ''}`}
             onClick={() => setFilterType('critical')}
           >
-            ⚠️ {t.filterCritical} ({criticalCount})
+            {t.filterCritical} ({criticalCount})
           </button>
           <button
             className={`filter-btn ${filterType === 'pending' ? 'active' : ''}`}
             onClick={() => setFilterType('pending')}
           >
-            ⏳ {t.filterPending} ({reports.filter(r => r.status === 'reported').length})
+            {t.filterPending} ({reports.filter(r => r.status === 'reported').length})
           </button>
           <button
             className={`filter-btn ${filterType === 'addressed' ? 'active' : ''}`}
@@ -322,7 +333,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                             {severityPercent}%
                           </span>
                           <span className="severity-caption">
-                            {isCritical ? "⚡ Critical AI Priority" : "Standard Priority"}
+                            {isCritical ? "Critical Priority" : "Standard Priority"}
                           </span>
                         </div>
                       </td>
@@ -355,13 +366,17 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                         {report.image_url ? (
                           <div 
                             className="media-thumbnail-box"
-                            onClick={() => setFullScreenMedia(report.image_url)}
+                            onClick={() => setFullScreenMedia(resolveImageUrl(report.image_url))}
                             title="Click to view full screen"
                           >
                             <img 
-                              src={report.image_url} 
+                              src={resolveImageUrl(report.image_url)} 
                               alt="Road defect" 
                               className="table-media-thumb" 
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80";
+                              }}
                             />
                             <div className="thumb-hover-overlay">
                               <Maximize2 size={16} />
@@ -411,7 +426,15 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
               <X size={24} />
             </button>
             <div className="modal-image-wrapper">
-              <img src={fullScreenMedia} alt="Full Screen Defect View" className="fullscreen-img" />
+              <img 
+                src={resolveImageUrl(fullScreenMedia)} 
+                alt="Full Screen Defect View" 
+                className="fullscreen-img" 
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=1200&auto=format&fit=crop&q=80";
+                }}
+              />
             </div>
             <div className="modal-footer-caption">
               <span>High-Resolution PWD Road Defect Inspection View</span>

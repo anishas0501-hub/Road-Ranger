@@ -146,7 +146,7 @@ export function AuthorityLogin({ lang, t, onLoginSuccess, onBack }) {
           </div>
 
           <div className="demo-credentials-note">
-            💡 {t.demoCredentialsHint}
+            Note: {t.demoCredentialsHint}
           </div>
 
           <button 

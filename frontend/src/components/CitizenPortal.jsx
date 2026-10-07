@@ -305,14 +305,14 @@ export function CitizenPortal({ lang, t, onBack }) {
             className={`citizen-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
             onClick={() => setActiveTab('report')}
           >
-            📸 {t.reportTitle}
+            {t.reportTitle}
           </button>
           <button 
             type="button" 
             className={`citizen-tab-btn ${activeTab === 'track' ? 'active' : ''}`}
             onClick={() => setActiveTab('track')}
           >
-            🔍 {t.trackTicket}
+            {t.trackTicket}
           </button>
         </div>
       )}
@@ -374,13 +374,13 @@ export function CitizenPortal({ lang, t, onBack }) {
                       <Send size={14} className="animate-pulse" />
                       {t.officialNotice}
                     </span>
-                    <span className="live-status-tag">Delivered ✓</span>
+                    <span className="live-status-tag">Delivered</span>
                   </div>
                   <div className="citizen-message-body">
                     "{t.automatedMsgText}"
                   </div>
                   <div className="citizen-message-sub">
-                    <span>✓ Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
+                    <span>Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
                   </div>
                 </div>
               ) : (
@@ -439,13 +439,13 @@ export function CitizenPortal({ lang, t, onBack }) {
                   <Send size={14} className="animate-pulse" />
                   {t.officialNotice}
                 </span>
-                <span className="live-status-tag">Delivered to Citizen App ✓</span>
+                <span className="live-status-tag">Delivered to Citizen App</span>
               </div>
               <div className="citizen-message-body">
                 "{t.automatedMsgText}"
               </div>
               <div className="citizen-message-sub">
-                <span>✓ Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
+                <span>Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
               </div>
             </div>
           ) : (
@@ -511,11 +511,11 @@ export function CitizenPortal({ lang, t, onBack }) {
               <label className="step-label">{t.selectDamage}</label>
               <div className="damage-chips-grid">
                 {[
-                  { id: 'Pothole', label: t.pothole, icon: '🕳️' },
-                  { id: 'Crack', label: t.crack, icon: '⚡' },
-                  { id: 'Drainage Failure', label: t.drainage, icon: '🌊' },
-                  { id: 'Soil Erosion', label: t.erosion, icon: '⚠️' },
-                  { id: 'Others', label: t.other, icon: '📝' }
+                  { id: 'Pothole', label: t.pothole },
+                  { id: 'Crack', label: t.crack },
+                  { id: 'Drainage Failure', label: t.drainage },
+                  { id: 'Soil Erosion', label: t.erosion },
+                  { id: 'Others', label: t.other }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -526,7 +526,6 @@ export function CitizenPortal({ lang, t, onBack }) {
                       if (file) runAiDefectDetection(file.name, item.id);
                     }}
                   >
-                    <span className="chip-icon">{item.icon}</span>
                     <span className="chip-text">{item.label}</span>
                   </button>
                 ))}

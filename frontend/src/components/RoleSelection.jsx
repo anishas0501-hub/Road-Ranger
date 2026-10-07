@@ -29,9 +29,9 @@ export function RoleSelection({ onSelectRole, lang, t }) {
           <h2 className="role-card-title">{t.citizen}</h2>
           <p className="role-card-desc">{t.citizenDesc}</p>
           <div className="role-features-list">
-            <span className="pill-tag">📸 Photo / Video Upload</span>
-            <span className="pill-tag">📍 Live GPS Pinning</span>
-            <span className="pill-tag">🤖 Instant AI Defect Scoring</span>
+            <span className="pill-tag">Photo & Video Evidence</span>
+            <span className="pill-tag">Satellite GPS Geotagging</span>
+            <span className="pill-tag">Automated AI Defect Scoring</span>
           </div>
           <button className="role-action-btn citizen-btn">
             <span>Continue as Citizen</span>
@@ -54,9 +54,9 @@ export function RoleSelection({ onSelectRole, lang, t }) {
           <h2 className="role-card-title">{t.authority}</h2>
           <p className="role-card-desc">{t.authorityDesc}</p>
           <div className="role-features-list">
-            <span className="pill-tag">⚡ AI Severity Queue</span>
-            <span className="pill-tag">🔒 Officer Verification</span>
-            <span className="pill-tag">✓ 1-Click Citizen Dispatch</span>
+            <span className="pill-tag">Prioritized AI Severity Queue</span>
+            <span className="pill-tag">Officer Identity Verification</span>
+            <span className="pill-tag">Direct Citizen Notification Dispatch</span>
           </div>
           <button className="role-action-btn authority-btn">
             <span>Authority Portal Login</span>

@@ -401,24 +401,19 @@ body {
 
 .damage-chip {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
-  padding: 0.9rem 0.5rem;
-  background-color: var(--gray-50);
+  padding: 0.85rem 0.75rem;
+  background-color: #ffffff;
   border: 1.5px solid var(--gray-200);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s;
-}
-
-.damage-chip .chip-icon {
-  font-size: 1.4rem;
+  min-height: 48px;
 }
 
 .damage-chip .chip-text {
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--navy-800);
   text-align: center;

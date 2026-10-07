@@ -94,14 +94,17 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
     }
   };
 
-  // Authority Tick Mark action handler
-  const handleAcknowledge = async (reportId) => {
+  // Authority Dynamic Click / Unclick Toggle Action Handler
+  const handleToggleStatus = async (reportId, currentStatus) => {
+    const isCurrentlyAddressed = currentStatus === 'addressed';
+    const nextStatus = isCurrentlyAddressed ? 'reported' : 'addressed';
+
     try {
       // 1. Send status update to backend PATCH /api/reports/{id}/status
       await fetch(`${API_BASE}/api/reports/${reportId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "addressed" })
+        body: JSON.stringify({ status: nextStatus })
       });
     } catch (err) {
       console.warn("Backend update failed, applying locally:", err);
@@ -109,15 +112,27 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
 
     // 2. Update local state
     setReports((prev) =>
-      prev.map((r) => (r.id === reportId ? { ...r, status: "addressed" } : r))
+      prev.map((r) => (r.id === reportId ? { ...r, status: nextStatus } : r))
     );
 
     // 3. Trigger automated citizen notification message
-    setNotificationMsg({
-      reportId,
-      text: t.automatedMsgText,
-      timestamp: new Date().toLocaleTimeString()
-    });
+    if (nextStatus === 'addressed') {
+      setNotificationMsg({
+        reportId,
+        type: 'addressed',
+        title: t.automatedMsgTitle,
+        text: t.automatedMsgText,
+        timestamp: new Date().toLocaleTimeString()
+      });
+    } else {
+      setNotificationMsg({
+        reportId,
+        type: 'reverted',
+        title: "Ticket Status Updated:",
+        text: `${t.statusReverted} (#PWD-RR-${reportId})`,
+        timestamp: new Date().toLocaleTimeString()
+      });
+    }
 
     // Auto-dismiss notification after 8 seconds
     setTimeout(() => {
@@ -176,18 +191,22 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
         </div>
       </header>
 
-      {/* Automated Citizen Message Banner when Tick is clicked */}
+      {/* Automated Citizen Message Banner when Tick is clicked/unclicked */}
       {notificationMsg && (
-        <div className="automated-dispatch-alert">
+        <div className={`automated-dispatch-alert ${notificationMsg.type === 'reverted' ? 'reverted-alert' : ''}`}>
           <div className="dispatch-alert-icon">
-            <Send size={20} className="text-emerald-500 animate-bounce" />
+            <Send size={20} className={notificationMsg.type === 'reverted' ? 'text-amber-500' : 'text-emerald-500 animate-bounce'} />
           </div>
           <div className="dispatch-alert-content">
             <span className="dispatch-title">
-              {t.automatedMsgTitle} (Ticket #PWD-RR-{notificationMsg.reportId})
+              {notificationMsg.title} (Ticket #PWD-RR-{notificationMsg.reportId})
             </span>
             <p className="dispatch-body">"{notificationMsg.text}"</p>
-            <span className="dispatch-time">Dispatched to Citizen App/SMS at {notificationMsg.timestamp}</span>
+            <span className="dispatch-time">
+              {notificationMsg.type === 'addressed' 
+                ? `Dispatched live to Citizen App/SMS at ${notificationMsg.timestamp}`
+                : `Updated at ${notificationMsg.timestamp}`}
+            </span>
           </div>
           <button className="dispatch-close-btn" onClick={() => setNotificationMsg(null)}>
             <X size={16} />
@@ -353,22 +372,27 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                         )}
                       </td>
 
-                      {/* Authority Action: Tick Mark Button */}
+                      {/* Authority Action: Dynamic Click / Unclick Toggle Button */}
                       <td className="action-cell">
                         {isAddressed ? (
-                          <div className="addressed-badge">
-                            <CheckCircle2 size={16} className="text-emerald-500" />
+                          <button
+                            type="button"
+                            className="tick-action-btn addressed-toggle-btn"
+                            onClick={() => handleToggleStatus(report.id, report.status)}
+                            title={t.markedAddressed}
+                          >
+                            <CheckCircle2 size={17} className="text-white" />
                             <span>{t.markedAddressed}</span>
-                          </div>
+                          </button>
                         ) : (
                           <button
                             type="button"
-                            className="tick-action-btn"
-                            onClick={() => handleAcknowledge(report.id)}
+                            className="tick-action-btn pending-toggle-btn"
+                            onClick={() => handleToggleStatus(report.id, report.status)}
                             title={t.markAddressed}
                           >
-                            <Check size={18} />
-                            <span>Acknowledge</span>
+                            <Check size={17} />
+                            <span>{t.markAddressed}</span>
                           </button>
                         )}
                       </td>

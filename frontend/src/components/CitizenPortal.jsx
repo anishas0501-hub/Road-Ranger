@@ -9,12 +9,16 @@ import {
   Sparkles, 
   Award, 
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  Send,
+  Clock,
+  Search
 } from 'lucide-react';
 
 const API_BASE = "http://127.0.0.1:8000";
 
 export function CitizenPortal({ lang, t, onBack }) {
+  const [activeTab, setActiveTab] = useState('report'); // 'report' or 'track'
   const [damageType, setDamageType] = useState('Pothole');
   const [otherSpecify, setOtherSpecify] = useState('');
   const [description, setDescription] = useState('');
@@ -36,13 +40,49 @@ export function CitizenPortal({ lang, t, onBack }) {
   const [submittedReport, setSubmittedReport] = useState(null);
   const [submitError, setSubmitError] = useState(null);
 
+  // Ticket tracking state
+  const [trackSearchId, setTrackSearchId] = useState('');
+  const [trackedReport, setTrackedReport] = useState(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState(null);
+
   const fileInputRef = useRef(null);
   const MAX_CHARS = 250;
 
   // Request GPS immediately on portal load
   useEffect(() => {
     fetchGPSLocation();
+    // Check if there is a recently submitted ticket in storage
+    const storedTicket = localStorage.getItem('road_ranger_recent_ticket');
+    if (storedTicket) {
+      setTrackSearchId(storedTicket);
+    }
   }, []);
+
+  // Polling for live status updates from authority (reflecting dynamic clicks/unclicks)
+  useEffect(() => {
+    const reportToCheck = submittedReport || trackedReport;
+    if (!reportToCheck?.id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/reports/${reportToCheck.id}`);
+        if (res.ok) {
+          const updated = await res.json();
+          if (submittedReport && updated.status !== submittedReport.status) {
+            setSubmittedReport(updated);
+          }
+          if (trackedReport && updated.status !== trackedReport.status) {
+            setTrackedReport(updated);
+          }
+        }
+      } catch (e) {
+        // silent fallback
+      }
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, [submittedReport?.id, submittedReport?.status, trackedReport?.id, trackedReport?.status]);
 
   const fetchGPSLocation = () => {
     setGpsLoading(true);
@@ -50,7 +90,6 @@ export function CitizenPortal({ lang, t, onBack }) {
     if (!navigator.geolocation) {
       setGpsError("Geolocation is not supported by your browser");
       setGpsLoading(false);
-      // Fallback default coordinates (e.g. Imphal center 24.8170, 93.9368)
       setCoords({ latitude: 24.8170, longitude: 93.9368, accuracy: 15 });
       return;
     }
@@ -67,7 +106,6 @@ export function CitizenPortal({ lang, t, onBack }) {
       (error) => {
         console.warn("GPS access denied or timed out, using regional fallback:", error.message);
         setGpsError("GPS permission denied or timeout. Regional coordinates applied.");
-        // Imphal / Manipur regional coordinates fallback
         setCoords({ latitude: 24.8170, longitude: 93.9368, accuracy: 25 });
         setGpsLoading(false);
       },
@@ -173,10 +211,10 @@ export function CitizenPortal({ lang, t, onBack }) {
 
       const created = await response.json();
       setSubmittedReport(created);
+      localStorage.setItem('road_ranger_recent_ticket', String(created.id));
     } catch (err) {
       console.error("Submission failed:", err);
-      // Offline / fallback success simulation if backend not yet running during test
-      setSubmittedReport({
+      const fallbackReport = {
         id: Math.floor(1000 + Math.random() * 9000),
         latitude: coords?.latitude || 24.8170,
         longitude: coords?.longitude || 93.9368,
@@ -184,10 +222,55 @@ export function CitizenPortal({ lang, t, onBack }) {
         severity_score: aiResult?.severityScore || 0.78,
         status: "reported",
         description: description
-      });
+      };
+      setSubmittedReport(fallbackReport);
+      localStorage.setItem('road_ranger_recent_ticket', String(fallbackReport.id));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleTrackSubmit = async (e) => {
+    e?.preventDefault();
+    if (!trackSearchId.trim()) return;
+
+    setTrackingLoading(true);
+    setTrackingError(null);
+    setTrackedReport(null);
+
+    // Normalize ticket ID if entered as '#PWD-RR-2' or '2'
+    const cleanId = trackSearchId.replace(/[^0-9]/g, '');
+    if (!cleanId) {
+      setTrackingError("Please enter a valid numeric Ticket ID (e.g. 1 or #PWD-RR-1).");
+      setTrackingLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/${cleanId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTrackedReport(data);
+      } else {
+        setTrackingError(`Ticket #${cleanId} was not found in PWD records.`);
+      }
+    } catch (err) {
+      console.warn("Could not query server:", err);
+      setTrackingError("Could not connect to PWD server. Please check your connection.");
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const refreshCurrentStatus = async (reportId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/reports/${reportId}`);
+      if (res.ok) {
+        const updated = await res.json();
+        if (submittedReport?.id === reportId) setSubmittedReport(updated);
+        if (trackedReport?.id === reportId) setTrackedReport(updated);
+      }
+    } catch (e) {}
   };
 
   const resetForm = () => {
@@ -202,7 +285,7 @@ export function CitizenPortal({ lang, t, onBack }) {
 
   return (
     <div className="citizen-portal-container">
-      {/* Top back button */}
+      {/* Top Navigation & Tabs */}
       <div className="portal-top-bar">
         <button className="back-link-btn" onClick={onBack}>
           <ChevronLeft size={18} />
@@ -214,8 +297,126 @@ export function CitizenPortal({ lang, t, onBack }) {
         </div>
       </div>
 
+      {/* Citizen Tab Switcher: Report vs Track */}
+      {!submittedReport && (
+        <div className="citizen-tabs-bar">
+          <button 
+            type="button" 
+            className={`citizen-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
+            onClick={() => setActiveTab('report')}
+          >
+            📸 {t.reportTitle}
+          </button>
+          <button 
+            type="button" 
+            className={`citizen-tab-btn ${activeTab === 'track' ? 'active' : ''}`}
+            onClick={() => setActiveTab('track')}
+          >
+            🔍 {t.trackTicket}
+          </button>
+        </div>
+      )}
+
+      {/* TRACK EXISTING TICKET VIEW */}
+      {!submittedReport && activeTab === 'track' && (
+        <div className="citizen-form-card">
+          <div className="form-card-header">
+            <h1 className="portal-title">{t.trackTicket}</h1>
+            <p className="portal-subtitle">Check real-time PWD status and automated action notices</p>
+          </div>
+
+          <form onSubmit={handleTrackSubmit} className="track-search-form">
+            <div className="search-input-wrap">
+              <input
+                type="text"
+                className="text-input"
+                placeholder={t.trackPlaceholder}
+                value={trackSearchId}
+                onChange={(e) => setTrackSearchId(e.target.value)}
+              />
+              <button type="submit" className="track-submit-btn" disabled={trackingLoading}>
+                {trackingLoading ? <RotateCw size={16} className="spin" /> : <Search size={16} />}
+                <span>{t.trackButton}</span>
+              </button>
+            </div>
+            {trackingError && (
+              <div className="track-error-msg">
+                <AlertTriangle size={16} />
+                <span>{trackingError}</span>
+              </div>
+            )}
+          </form>
+
+          {/* Tracked Ticket Result */}
+          {trackedReport && (
+            <div className="tracked-result-card animate-slide-in">
+              <div className="tracked-header">
+                <div>
+                  <span className="ticket-tag">#PWD-RR-{trackedReport.id}</span>
+                  <h3 className="tracked-damage-type">{trackedReport.damage_type}</h3>
+                </div>
+                <button 
+                  type="button" 
+                  className="recheck-btn" 
+                  onClick={() => refreshCurrentStatus(trackedReport.id)}
+                  title="Check for live updates from Authority"
+                >
+                  <RotateCw size={14} />
+                  <span>{t.recheckStatus}</span>
+                </button>
+              </div>
+
+              {/* AUTOMATED CITIZEN MESSAGE BANNER INTEGRATION */}
+              {trackedReport.status === 'addressed' ? (
+                <div className="citizen-official-message-banner">
+                  <div className="citizen-message-banner-top">
+                    <span className="pwd-live-pill">
+                      <Send size={14} className="animate-pulse" />
+                      {t.officialNotice}
+                    </span>
+                    <span className="live-status-tag">Delivered ✓</span>
+                  </div>
+                  <div className="citizen-message-body">
+                    "{t.automatedMsgText}"
+                  </div>
+                  <div className="citizen-message-sub">
+                    <span>✓ Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="citizen-pending-notice">
+                  <Clock size={16} className="text-amber-600" />
+                  <span>Status: Awaiting PWD Inspection • Real-time authority updates will appear here automatically</span>
+                </div>
+              )}
+
+              <div className="success-details-grid mt-4">
+                <div className="success-item">
+                  <span className="label">{t.statusReported}</span>
+                  <span className={trackedReport.status === 'addressed' ? 'status-badge-addressed' : 'status-badge-pending'}>
+                    {trackedReport.status === 'addressed' ? t.statusAddressedCitizen : 'Active Inspection Queue'}
+                  </span>
+                </div>
+                <div className="success-item">
+                  <span className="label">{t.severityRating}</span>
+                  <span className="value font-semibold text-amber-600">
+                    {Math.round(trackedReport.severity_score * 100)}% Severity
+                  </span>
+                </div>
+                <div className="success-item">
+                  <span className="label">{t.locationHeader}</span>
+                  <span className="value">
+                    {trackedReport.latitude}, {trackedReport.longitude}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* NEW REPORT SUCCESS CONFIRMATION VIEW */}
       {submittedReport ? (
-        /* Success Confirmation View */
         <div className="success-card">
           <div className="success-icon-box">
             <CheckCircle2 size={54} className="text-emerald-500" />
@@ -230,6 +431,30 @@ export function CitizenPortal({ lang, t, onBack }) {
             <span>{t.citizenPoints}</span>
           </div>
 
+          {/* DYNAMIC AUTOMATED MESSAGE TRANSMISSION INTEGRATION */}
+          {submittedReport.status === 'addressed' ? (
+            <div className="citizen-official-message-banner animate-slide-in">
+              <div className="citizen-message-banner-top">
+                <span className="pwd-live-pill">
+                  <Send size={14} className="animate-pulse" />
+                  {t.officialNotice}
+                </span>
+                <span className="live-status-tag">Delivered to Citizen App ✓</span>
+              </div>
+              <div className="citizen-message-body">
+                "{t.automatedMsgText}"
+              </div>
+              <div className="citizen-message-sub">
+                <span>✓ Ticket marked Addressed by PWD Highway Division. Actions scheduled.</span>
+              </div>
+            </div>
+          ) : (
+            <div className="citizen-pending-notice">
+              <Clock size={16} className="text-blue-600 animate-spin" />
+              <span>Awaiting Departmental Review • Live authority response streams here automatically</span>
+            </div>
+          )}
+
           <div className="success-details-grid">
             <div className="success-item">
               <span className="label">{t.typeHeader}</span>
@@ -237,7 +462,9 @@ export function CitizenPortal({ lang, t, onBack }) {
             </div>
             <div className="success-item">
               <span className="label">{t.statusReported}</span>
-              <span className="status-badge-pending">Active Inspection Queue</span>
+              <span className={submittedReport.status === 'addressed' ? 'status-badge-addressed' : 'status-badge-pending'}>
+                {submittedReport.status === 'addressed' ? t.statusAddressedCitizen : 'Active Inspection Queue'}
+              </span>
             </div>
             <div className="success-item">
               <span className="label">{t.locationHeader}</span>
@@ -254,6 +481,14 @@ export function CitizenPortal({ lang, t, onBack }) {
           </div>
 
           <div className="action-buttons-row">
+            <button 
+              type="button" 
+              className="btn-secondary" 
+              onClick={() => refreshCurrentStatus(submittedReport.id)}
+            >
+              <RotateCw size={14} />
+              <span>{t.recheckStatus}</span>
+            </button>
             <button className="btn-secondary" onClick={resetForm}>
               {t.viewAnother}
             </button>
@@ -262,8 +497,8 @@ export function CitizenPortal({ lang, t, onBack }) {
             </button>
           </div>
         </div>
-      ) : (
-        /* Main Submission Form */
+      ) : activeTab === 'report' ? (
+        /* MAIN SUBMISSION FORM */
         <div className="citizen-form-card">
           <div className="form-card-header">
             <h1 className="portal-title">{t.reportTitle}</h1>
@@ -484,7 +719,7 @@ export function CitizenPortal({ lang, t, onBack }) {
             </div>
           </form>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

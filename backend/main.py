@@ -154,3 +154,18 @@ def update_report_status(
     db.commit()
     db.refresh(report)
     return report
+
+
+@app.get(
+    "/api/reports/{report_id}",
+    response_model=schemas.ReportResponse,
+    summary="Get specific report details by ID"
+)
+def get_report_by_id(report_id: int, db: Session = Depends(get_db)):
+    """
+    Fetch details of an individual ticket by ID for citizen tracking.
+    """
+    report = db.query(models.Report).filter(models.Report.id == report_id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return report

@@ -1520,3 +1520,246 @@ body {
     width: 100%;
   }
 }
+
+/* ============================================================
+   DYNAMIC TOGGLE BUTTONS & CITIZEN MESSAGE INTEGRATION STYLES
+   ============================================================ */
+
+/* Dynamic Toggle Action Buttons in Authority Table */
+.tick-action-btn.addressed-toggle-btn {
+  background-color: #059669;
+  color: #ffffff;
+  border: 1.5px solid #047857;
+  box-shadow: 0 0 10px rgba(5, 150, 105, 0.35);
+  font-weight: 700;
+}
+
+.tick-action-btn.addressed-toggle-btn:hover {
+  background-color: #047857;
+  transform: translateY(-1px);
+}
+
+.tick-action-btn.pending-toggle-btn {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: 1.5px solid #1d4ed8;
+  font-weight: 700;
+}
+
+.tick-action-btn.pending-toggle-btn:hover {
+  background-color: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+/* Reverted alert banner */
+.automated-dispatch-alert.reverted-alert {
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+}
+
+.automated-dispatch-alert.reverted-alert .dispatch-title {
+  color: #92400e;
+}
+
+.automated-dispatch-alert.reverted-alert .dispatch-body {
+  color: #b45309;
+}
+
+.automated-dispatch-alert.reverted-alert .dispatch-time {
+  color: #d97706;
+}
+
+/* Citizen Tabs Bar */
+.citizen-tabs-bar {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  background-color: #e2e8f0;
+  padding: 0.35rem;
+  border-radius: var(--radius-md);
+  width: fit-content;
+}
+
+.citizen-tab-btn {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.citizen-tab-btn.active {
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  font-weight: 700;
+}
+
+/* Track Search Form */
+.track-search-form {
+  margin-bottom: 2rem;
+}
+
+.search-input-wrap {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.track-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.track-submit-btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.track-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #dc2626;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+/* Tracked Result Card */
+.tracked-result-card {
+  background-color: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+}
+
+.tracked-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.tracked-damage-type {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0.2rem 0 0;
+}
+
+.recheck-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+}
+
+.recheck-btn:hover {
+  background-color: #f1f5f9;
+}
+
+/* OFFICIAL CITIZEN AUTOMATED MESSAGE BANNER */
+.citizen-official-message-banner {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border: 2px solid #10b981;
+  border-radius: var(--radius-md);
+  padding: 1.25rem 1.5rem;
+  margin: 1.5rem 0;
+  text-align: left;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.15);
+  animation: slideInDown 0.35s ease;
+}
+
+.citizen-message-banner-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.pwd-live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background-color: #065f46;
+  color: #ffffff;
+  padding: 0.25rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.live-status-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #047857;
+}
+
+.citizen-message-body {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #064e3b;
+  line-height: 1.45;
+  margin-bottom: 0.5rem;
+}
+
+.citizen-message-sub {
+  font-size: 0.8rem;
+  color: #047857;
+  font-weight: 500;
+}
+
+/* Citizen Pending Notice */
+.citizen-pending-notice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #f0f9ff;
+  border: 1px dashed #7dd3fc;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md);
+  margin: 1.25rem 0;
+  font-size: 0.85rem;
+  color: #0369a1;
+  font-weight: 600;
+}
+
+/* Addressed Status Badge */
+.status-badge-addressed {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #047857;
+  background-color: #d1fae5;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}

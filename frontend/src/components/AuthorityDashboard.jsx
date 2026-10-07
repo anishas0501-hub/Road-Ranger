@@ -391,7 +391,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                             onClick={() => handleToggleStatus(report.id, report.status)}
                             title={t.markAddressed}
                           >
-                            <Check size={17} />
+                            <Check size={17} className="pending-check-icon" />
                             <span>{t.markAddressed}</span>
                           </button>
                         )}

@@ -84,8 +84,8 @@ export const translations = {
     mediaHeader: "Media Evidence",
     actionHeader: "Authority Action",
     
-    markAddressed: "Mark Addressed & Dispatch Notification",
-    markedAddressed: "Addressed ✓ (Click to Revert)",
+    markAddressed: "Mark as Addressed",
+    markedAddressed: "Addressed (Click to Revert)",
     unmarkAddressed: "Revert to Reported",
     statusReverted: "Ticket reverted to Pending Review",
     automatedMsgTitle: "Automated Citizen Notification Dispatched:",
@@ -185,8 +185,8 @@ export const translations = {
     mediaHeader: "ভিদিও / ফটো",
     actionHeader: "ওথোরিতি এক্সন",
     
-    markAddressed: "য়েংশিনখ্রে হায়না প্রম্মান তৌবা",
-    markedAddressed: "য়েংশিনখ্রে ✓ (হন্দোক্নবা থম্বীয়ু)",
+    markAddressed: "য়েংশিনখ্রে হায়না খনবা",
+    markedAddressed: "য়েংশিনখ্রে (হন্দোক্নবা থম্বীয়ু)",
     unmarkAddressed: "হন্দোকপা (পেন্ডিং)",
     statusReverted: "তিকেত অসি অমুক হন্না পেন্ডিং ওইনা থমখ্রে",
     automatedMsgTitle: "প্রজাদা ওতোমেতেদ মেসেজ থাখ্রে:",

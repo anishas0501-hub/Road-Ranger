@@ -268,7 +268,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
             className={`filter-btn ${filterType === 'addressed' ? 'active' : ''}`}
             onClick={() => setFilterType('addressed')}
           >
-            ✓ {t.filterAddressed} ({addressedCount})
+            {t.filterAddressed} ({addressedCount})
           </button>
         </div>
       </div>
@@ -381,7 +381,6 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                             onClick={() => handleToggleStatus(report.id, report.status)}
                             title={t.markedAddressed}
                           >
-                            <CheckCircle2 size={17} className="text-white" />
                             <span>{t.markedAddressed}</span>
                           </button>
                         ) : (
@@ -391,7 +390,6 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                             onClick={() => handleToggleStatus(report.id, report.status)}
                             title={t.markAddressed}
                           >
-                            <Check size={17} className="pending-check-icon" />
                             <span>{t.markAddressed}</span>
                           </button>
                         )}

@@ -61,26 +61,49 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
   const [filterType, setFilterType] = useState('all'); // 'all', 'critical', 'pending', 'addressed'
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Full-screen modal media state
+  // Full-screen modal media state & multi-image gallery for clusters
   const [fullScreenMedia, setFullScreenMedia] = useState(null);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [currentClusterMedia, setCurrentClusterMedia] = useState([]);
 
   // Automated feedback notification banner state
   const [notificationMsg, setNotificationMsg] = useState(null);
 
   useEffect(() => {
     fetchReports();
-  }, []);
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setFullScreenMedia(null);
+      } else if (e.key === 'ArrowRight') {
+        setGalleryIndex((prev) => {
+          if (currentClusterMedia.length <= 1) return prev;
+          const next = (prev + 1) % currentClusterMedia.length;
+          setFullScreenMedia(resolveImageUrl(currentClusterMedia[next].image_url));
+          return next;
+        });
+      } else if (e.key === 'ArrowLeft') {
+        setGalleryIndex((prev) => {
+          if (currentClusterMedia.length <= 1) return prev;
+          const next = (prev - 1 + currentClusterMedia.length) % currentClusterMedia.length;
+          setFullScreenMedia(resolveImageUrl(currentClusterMedia[next].image_url));
+          return next;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentClusterMedia]);
 
   const fetchReports = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/reports?order_by_severity=true`);
+      const res = await fetch(`${API_BASE}/api/reports?cluster=true&order_by_severity=true`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.length > 0) {
           setReports(data);
         } else {
-          // If database is currently empty, load realistic PWD seed reports
           setReports(SAMPLE_REPORTS);
         }
       } else {
@@ -94,34 +117,64 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
     }
   };
 
-  // Authority Dynamic Click / Unclick Toggle Action Handler
-  const handleToggleStatus = async (reportId, currentStatus) => {
+  // Open modal for a clustered ticket
+  const openGalleryModal = (report) => {
+    const list = report.media_list && report.media_list.length > 0
+      ? report.media_list
+      : [{ report_id: report.id, image_url: report.image_url, reporter_name: report.reporter_name }];
+    setCurrentClusterMedia(list);
+    setGalleryIndex(0);
+    setFullScreenMedia(resolveImageUrl(list[0].image_url));
+  };
+
+  const handleNextPhoto = (e) => {
+    e?.stopPropagation();
+    if (currentClusterMedia.length <= 1) return;
+    const next = (galleryIndex + 1) % currentClusterMedia.length;
+    setGalleryIndex(next);
+    setFullScreenMedia(resolveImageUrl(currentClusterMedia[next].image_url));
+  };
+
+  const handlePrevPhoto = (e) => {
+    e?.stopPropagation();
+    if (currentClusterMedia.length <= 1) return;
+    const prev = (galleryIndex - 1 + currentClusterMedia.length) % currentClusterMedia.length;
+    setGalleryIndex(prev);
+    setFullScreenMedia(resolveImageUrl(currentClusterMedia[prev].image_url));
+  };
+
+  // Authority Dynamic Click / Unclick Toggle Action Handler with Cascade
+  const handleToggleStatus = async (report) => {
+    const reportId = report.id;
+    const currentStatus = report.status;
     const isCurrentlyAddressed = currentStatus === 'addressed';
     const nextStatus = isCurrentlyAddressed ? 'reported' : 'addressed';
+    const reportIds = report.report_ids || [reportId];
 
     try {
-      // 1. Send status update to backend PATCH /api/reports/{id}/status
       await fetch(`${API_BASE}/api/reports/${reportId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus })
+        body: JSON.stringify({
+          status: nextStatus,
+          report_ids: reportIds
+        })
       });
     } catch (err) {
       console.warn("Backend update failed, applying locally:", err);
     }
 
-    // 2. Update local state
     setReports((prev) =>
       prev.map((r) => (r.id === reportId ? { ...r, status: nextStatus } : r))
     );
 
-    // 3. Trigger automated citizen notification message
+    const count = report.report_count || 1;
     if (nextStatus === 'addressed') {
       setNotificationMsg({
         reportId,
         type: 'addressed',
         title: t.automatedMsgTitle,
-        text: t.automatedMsgText,
+        text: `${t.automatedMsgText} (Cascaded update to ${count} citizen report${count > 1 ? 's' : ''})`,
         timestamp: new Date().toLocaleTimeString()
       });
     } else {
@@ -134,7 +187,6 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
       });
     }
 
-    // Auto-dismiss notification after 8 seconds
     setTimeout(() => {
       setNotificationMsg((curr) => (curr?.reportId === reportId ? null : curr));
     }, 8000);
@@ -144,17 +196,23 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
   const getAiSummary = (desc) => {
     if (!desc) return "No description provided.";
     if (desc.length <= 60) return desc;
-    // Condense into actionable summary
     return desc.slice(0, 58) + "...";
   };
 
   // Helper to ensure valid, accessible image URLs with reliable fallback
   const resolveImageUrl = (url) => {
-    if (!url || url.includes("example.com")) {
+    if (!url || url === 'None' || url === 'null' || url === '' || url.includes("example.com")) {
       return "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=1200&auto=format&fit=crop&q=80";
     }
     if (url.startsWith("/uploads/")) {
       return `${API_BASE}${url}`;
+    }
+    if (url.startsWith("uploads/")) {
+      return `${API_BASE}/${url}`;
+    }
+    if (url.includes("/uploads/")) {
+      const parts = url.split("/uploads/");
+      return `${API_BASE}/uploads/${parts[1]}`;
     }
     return url;
   };
@@ -230,7 +288,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
         <div className="kpi-card">
           <span className="kpi-label">{t.totalTickets}</span>
           <span className="kpi-value">{totalCount}</span>
-          <span className="kpi-sub">Total crowdsourced reports</span>
+          <span className="kpi-sub">Clustered road defect zones</span>
         </div>
         <div className="kpi-card critical">
           <span className="kpi-label">{t.criticalIssues}</span>
@@ -240,7 +298,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
         <div className="kpi-card addressed">
           <span className="kpi-label">{t.addressedIssues}</span>
           <span className="kpi-value text-emerald-600">{addressedCount}</span>
-          <span className="kpi-sub">Acknowledged & citizen notified</span>
+          <span className="kpi-sub">Acknowledged & citizens notified</span>
         </div>
       </div>
 
@@ -284,7 +342,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
         </div>
       </div>
 
-      {/* Prioritized Reports Table / List */}
+      {/* Prioritized Clustered Reports Table / List */}
       <div className="reports-table-card">
         {filteredReports.length === 0 ? (
           <div className="empty-reports-state">
@@ -309,21 +367,46 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                   const severityPercent = Math.round(report.severity_score * 100);
                   const isCritical = report.severity_score >= 0.70;
                   const isAddressed = report.status === 'addressed';
+                  const citizenCount = report.report_count || 1;
+                  const hasMultiplePhotos = report.media_list && report.media_list.length > 1;
 
                   return (
                     <tr 
                       key={report.id} 
                       className={`report-row ${isCritical ? 'critical-row' : ''} ${isAddressed ? 'addressed-row' : ''}`}
                     >
-                      {/* Ticket ID */}
+                      {/* Ticket ID & Prominent Cluster Report Count */}
                       <td className="ticket-cell">
                         <span className="ticket-tag">#RR-{report.id}</span>
                         <span className="ticket-status-pill">{report.status}</span>
+                        {citizenCount > 1 && (
+                          <span 
+                            style={{ 
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '0.25rem', 
+                              backgroundColor: '#ecfdf5', 
+                              color: '#065f46', 
+                              border: '1px solid #a7f3d0', 
+                              padding: '0.15rem 0.45rem', 
+                              borderRadius: '4px', 
+                              fontSize: '0.7rem', 
+                              fontWeight: 700 
+                            }}
+                          >
+                            Reported by {citizenCount} citizens
+                          </span>
+                        )}
                       </td>
 
                       {/* Damage Type */}
                       <td className="type-cell">
                         <strong className="damage-name">{report.damage_type}</strong>
+                        {report.reporter_name && (
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: '#64748b' }}>
+                            Primary: {report.reporter_name}
+                          </span>
+                        )}
                       </td>
 
                       {/* AI Severity */}
@@ -361,30 +444,51 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                         </p>
                       </td>
 
-                      {/* Media Upload (clickable full-screen) */}
+                      {/* Media Upload with Gallery Indicator (+N) */}
                       <td className="media-cell">
-                        {report.image_url ? (
-                          <div 
-                            className="media-thumbnail-box"
-                            onClick={() => setFullScreenMedia(resolveImageUrl(report.image_url))}
-                            title="Click to view full screen"
-                          >
-                            <img 
-                              src={resolveImageUrl(report.image_url)} 
-                              alt="Road defect" 
-                              className="table-media-thumb" 
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80";
-                              }}
-                            />
-                            <div className="thumb-hover-overlay">
-                              <Maximize2 size={16} />
+                        {(() => {
+                          const rawMedia = report.image_url || report.media_url || (report.media_list?.[0]?.image_url);
+                          const mediaSrc = resolveImageUrl(rawMedia);
+                          return (
+                            <div 
+                              className="media-thumbnail-box"
+                              onClick={() => openGalleryModal(report)}
+                              title={hasMultiplePhotos ? `Click to view ${report.media_list.length} citizen photos` : "Click to view full screen"}
+                              style={{ position: 'relative' }}
+                            >
+                              <img 
+                                src={mediaSrc} 
+                                alt={report.damage_type || "Road defect"} 
+                                className="table-media-thumb" 
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=800&auto=format&fit=crop&q=80";
+                                }}
+                              />
+                              {hasMultiplePhotos && (
+                                <span 
+                                  style={{
+                                    position: 'absolute',
+                                    bottom: '3px',
+                                    right: '3px',
+                                    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                                    color: '#ffffff',
+                                    padding: '0.1rem 0.35rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.65rem',
+                                    fontWeight: 800,
+                                    zIndex: 2
+                                  }}
+                                >
+                                  +{report.media_list.length - 1}
+                                </span>
+                              )}
+                              <div className="thumb-hover-overlay">
+                                <Maximize2 size={16} />
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <span className="no-media-text">No Media</span>
-                        )}
+                          );
+                        })()}
                       </td>
 
                       {/* Authority Action: Dynamic Click / Unclick Toggle Button */}
@@ -393,7 +497,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                           <button
                             type="button"
                             className="tick-action-btn addressed-toggle-btn"
-                            onClick={() => handleToggleStatus(report.id, report.status)}
+                            onClick={() => handleToggleStatus(report)}
                             title={t.markedAddressed}
                           >
                             <span>{t.markedAddressed}</span>
@@ -402,7 +506,7 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                           <button
                             type="button"
                             className="tick-action-btn pending-toggle-btn"
-                            onClick={() => handleToggleStatus(report.id, report.status)}
+                            onClick={() => handleToggleStatus(report)}
                             title={t.markAddressed}
                           >
                             <span>{t.markAddressed}</span>
@@ -418,13 +522,79 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
         )}
       </div>
 
-      {/* Full-screen Media Modal */}
+      {/* Full-screen Media Modal with Gallery Carousel Navigation */}
       {fullScreenMedia && (
         <div className="fullscreen-modal-backdrop" onClick={() => setFullScreenMedia(null)}>
-          <div className="fullscreen-modal-content" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close-btn" onClick={() => setFullScreenMedia(null)}>
+          <div className="fullscreen-modal-content" onClick={(e) => e.stopPropagation()} style={{ position: 'relative', minWidth: '320px' }}>
+            <button 
+              type="button" 
+              className="modal-close-btn" 
+              onClick={() => setFullScreenMedia(null)}
+              title="Close Full Screen (Esc)"
+            >
               <X size={24} />
             </button>
+
+            {/* Left Carousel Arrow */}
+            {currentClusterMedia.length > 1 && (
+              <button
+                type="button"
+                onClick={handlePrevPhoto}
+                style={{
+                  position: 'absolute',
+                  left: '1rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 20,
+                  fontSize: '1.25rem',
+                  fontWeight: 900
+                }}
+                title="Previous Image (Left Arrow)"
+              >
+                ‹
+              </button>
+            )}
+
+            {/* Right Carousel Arrow */}
+            {currentClusterMedia.length > 1 && (
+              <button
+                type="button"
+                onClick={handleNextPhoto}
+                style={{
+                  position: 'absolute',
+                  right: '1rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 20,
+                  fontSize: '1.25rem',
+                  fontWeight: 900
+                }}
+                title="Next Image (Right Arrow)"
+              >
+                ›
+              </button>
+            )}
+
             <div className="modal-image-wrapper">
               <img 
                 src={resolveImageUrl(fullScreenMedia)} 
@@ -436,8 +606,16 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
                 }}
               />
             </div>
-            <div className="modal-footer-caption">
-              <span>High-Resolution PWD Road Defect Inspection View</span>
+
+            <div className="modal-footer-caption" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.85rem 1.5rem' }}>
+              <span>
+                {currentClusterMedia.length > 1 
+                  ? `Photo ${galleryIndex + 1} of ${currentClusterMedia.length} (${currentClusterMedia[galleryIndex]?.reporter_name || 'Citizen Evidence'})`
+                  : 'High-Resolution PWD Road Defect Inspection View'}
+              </span>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                Use ‹ and › keys or click arrows to view all photos
+              </span>
             </div>
           </div>
         </div>

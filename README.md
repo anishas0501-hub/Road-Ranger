@@ -1,7 +1,12 @@
 # Road-Ranger 🛣️
 **PWD-01: AI-Based Road Damage Reporting & Detection System**
 
-Road-Ranger is a full-stack civic reporting and municipal decision-support platform designed for citizens and the Public Works Department (PWD). Citizens can capture road defects with live satellite GPS pinning and photos/videos, while PWD authorities review AI-prioritized repair tickets, inspect high-resolution media, and dispatch automated progress notifications.
+[![Live Demo](https://img.shields.io/badge/Live_Deployment-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://road-ranger.vercel.app/)
+[![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-181717?style=for-the-badge&logo=github)](https://github.com/anishas0501-hub/Road-Ranger)
+
+🌐 **Live Deployment URL**: **[https://road-ranger.vercel.app/](https://road-ranger.vercel.app/)**
+
+Road-Ranger is an AI-enabled civic infrastructure reporting and municipal decision-support system developed for citizens and the Public Works Department (PWD). Citizens report road hazards (potholes, cracks, drainage failures) with live satellite GPS pinning and image/video uploads, while PWD authorities review AI-prioritized repair tickets, inspect high-resolution multi-image galleries, and dispatch automated progress notifications.
 
 ---
 
@@ -9,41 +14,70 @@ Road-Ranger is a full-stack civic reporting and municipal decision-support platf
 
 ### 👤 Citizen Portal
 - **Bilingual Interface**: Seamless one-click toggle between **English** and **Manipuri (মৈতৈলোন্)**.
-- **Categorized Defect Selection**:
-  - Pothole (খোংহাম)
-  - Road Surface Crack (লম্বী অহাকপা)
-  - Drainage System Failure (ঈথাই/ড্রেনেজ মাংবা)
-  - Soil Erosion / Edge Collapse (লৈহাও চাইখ্রবা)
-  - Custom ("Other" with dynamic specification textbox)
-- **Live GPS Geolocation**: Locks real-time satellite coordinates (`latitude`, `longitude`, `accuracy`) immediately upon reporting or media capture, with Google Maps pinpoint integration.
-- **Photo / Video Media Upload**: Supports `.jpg`, `.png`, `.mp4` uploads with real-time preview and simulated AI defect vision scanning.
-- **Character Counter**: Restricts comments to 250 characters for crisp, actionable municipal tickets.
-- **Civic Gamification & Tracking**: Awards Civic Impact Points (+25 pts) and provides an instant Ticket Tracking Reference (`#PWD-RR-<ID>`).
+- **Citizen Authentication**:
+  - Secure registration with Mobile OTP verification (demo code: `123456`).
+  - Login via Full Name, Mobile Number, or Username + Password.
+- **3-Section Navigation Bar**:
+  1. **Report Road Damage**:
+     - Defect categories: Pothole, Surface Crack, Drainage System Failure, Soil Erosion, Others.
+     - Live satellite GPS geolocation locking (`latitude`, `longitude`, `accuracy`) with Google Maps pinpointing.
+     - Camera/Video upload with real-time AI vision scanning animation and defect classification.
+     - 250-character limit counter for concise, actionable descriptions.
+     - Instant **+50 Civic Reward Points** automatically credited upon verified submission.
+  2. **Track Existing Reports**:
+     - Real-time ticket status tracking (`#PWD-RR-<ID>`) with live polling for authority updates.
+     - Status indicators: *Reported • In Queue* vs *Addressed by PWD*.
+     - Automated official notification banner upon authority action.
+  3. **User Dashboard**:
+     - Citizen profile showing Full Name, Mobile Number, and Total Reward Points.
+     - Circular profile avatar with dynamic image upload.
+     - Civic impact summary and points breakdown.
+
+---
 
 ### 🛡️ Authority Portal & AI Dashboard
-- **Secure Multi-Factor Verification**:
-  - Official Gov Email (`@pwd.gov.in`) + Password
-  - Third-factor PWD Officer Badge Identifier (e.g. `PWD-MN-4091`) or Gov 6-Digit OTP token.
-- **AI Severity Prioritization**: Incoming reports are automatically ranked by their AI severity score (high accident risk tickets float to the top).
-- **Full-Screen Media Inspection**: Click any photo or video thumbnail to open a high-resolution inspection modal.
-- **Authority Tick Mark Action (`✓`)**:
-  - Highway engineers click to acknowledge tickets.
-  - Automatically sends status updates (`PATCH /api/reports/{id}/status`).
-  - Triggers the automated citizen feedback notification:
+- **Multi-Factor Verification**:
+  - Official PWD email (`@pwd.gov.in`) + Password.
+  - PWD Officer Badge Identifier (e.g. `PWD-MN-4091`) or 6-digit Gov 2FA OTP token.
+- **Geographic Deduplication & Clustering (Haversine Formula)**:
+  - Automatically clusters duplicate citizen complaints within a **20-meter radius**.
+  - Prominently displays citizen report counts (e.g. *Reported by 4 citizens*).
+  - Multi-image gallery with `+N` badge overlay for clustered reports.
+- **Full-Screen Media Lightbox Carousel**:
+  - Click any thumbnail to inspect high-resolution citizen evidence.
+  - Swipe or click left/right arrows (`‹` / `›` or keyboard `←` / `→`) to browse all photos associated with that defect cluster.
+  - Close with `Esc` or the close button.
+- **Dynamic Action Button & Cascade Updates**:
+  - Toggle between **"Mark as Addressed"** (white state) and **"Addressed (Click to Revert)"** (green state).
+  - Status updates cascade to all reports in the cluster so every reporting citizen receives automated notification notices:
     > *"Good job! Your complaint has been noticed and actions will be taken within 4-6 business days."*
 
 ---
 
 ## 🗄️ Database Architecture (SQLAlchemy & SQLite)
 
-The SQLite database (`road_ranger.db`) stores reports according to the specification:
+The SQLite database (`road_ranger.db`) maintains relational integrity between citizens and tickets:
 
+### `users` Table
 | Field | Type | Description |
 |---|---|---|
-| `id` | Integer (Primary Key) | Unique report ticket identifier |
+| `id` | Integer (PK) | Unique citizen identifier |
+| `full_name` | String | Citizen legal full name |
+| `mobile_number` | String (Unique) | 10-digit mobile number |
+| `username` | String (Unique) | Unique citizen username |
+| `password_hash` | String | Secure SHA-256 hashed password |
+| `profile_photo_url` | String | Profile avatar image URL |
+| `reward_points` | Integer | Total accumulated civic reward points (default: 0) |
+| `created_at` | DateTime | Timestamp of user registration |
+
+### `reports` Table
+| Field | Type | Description |
+|---|---|---|
+| `id` | Integer (PK) | Unique report ticket identifier |
+| `user_id` | Integer (FK) | References `users.id` (nullable for legacy/anonymous) |
 | `latitude` | Float | Geolocation latitude coordinate |
 | `longitude` | Float | Geolocation longitude coordinate |
-| `image_url` | String | Uploaded photo/video URL or asset reference |
+| `image_url` | String | Uploaded defect photo/video URL or asset reference |
 | `damage_type` | String | Type of road defect (e.g. Pothole, Crack, Drainage) |
 | `severity_score` | Float | AI predicted hazard score (0.0 to 1.0) |
 | `status` | String | Default: `'reported'`, updated to `'addressed'` upon authority action |
@@ -52,7 +86,7 @@ The SQLite database (`road_ranger.db`) stores reports according to the specifica
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started Locally
 
 ### 1. Prerequisites
 - Python 3.10+
@@ -60,42 +94,47 @@ The SQLite database (`road_ranger.db`) stores reports according to the specifica
 
 ### 2. Backend Setup (FastAPI)
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Start the FastAPI server
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 - API Docs (Swagger UI): `http://127.0.0.1:8000/docs`
-- Root Healthcheck: `http://127.0.0.1:8000/`
 
-#### REST Endpoints:
-- `POST /api/reports`: Submit new damage report.
-- `GET /api/reports`: Fetch all tickets sorted by AI severity score.
-- `PATCH /api/reports/{id}/status`: Update ticket status (e.g. `addressed`).
-- `POST /api/upload`: Upload road defect photo or video file.
-
----
+#### Key REST Endpoints:
+- `POST /api/auth/send-otp`: Request mock 6-digit OTP.
+- `POST /api/auth/register`: Register new citizen account.
+- `POST /api/auth/login`: Authenticate citizen.
+- `POST /api/reports`: Submit new damage report (+50 points).
+- `GET /api/reports?cluster=true`: Fetch deduplicated clustered reports for authority.
+- `GET /api/reports/clustered`: Dedicated geographic clustering endpoint (20m radius).
+- `PATCH /api/reports/{id}/status`: Cascade update status across a cluster.
+- `POST /api/upload`: Upload media file & run YOLOv8 defect inference.
 
 ### 3. Frontend Setup (React + Vite)
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 Open `http://localhost:5173` in your browser.
 
 ---
 
-## 🔐 Demo Credentials (Authority Login)
+## 🔐 Demo Credentials
+
+### Citizen Portal:
+- **Username**: `citizen_demo`
+- **Password**: `DemoPassword#123`
+- *(Or register any mobile number using dummy OTP: `123456`)*
+
+### Authority Command Center:
 - **Official Email**: `officer@pwd.gov.in`
 - **Password**: `GovSecure#2026`
-- **Officer Badge ID**: `PWD-MN-4091` *(or 6-Digit OTP: `849201`)*
+- **Officer Badge ID**: `PWD-MN-4091` *(or 6-Digit 2FA OTP: `849201`)*
+
+---
+
+## ☁️ Deployment
+
+- **Frontend**: Deployed on [Vercel](https://road-ranger.vercel.app/) with automated CI/CD and SPA rewrites (`vercel.json`).
+- **Live URL**: [https://road-ranger.vercel.app/](https://road-ranger.vercel.app/)

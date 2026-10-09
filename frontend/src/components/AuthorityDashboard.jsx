@@ -94,23 +94,55 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentClusterMedia]);
 
+  const getLocalCitizenReports = () => {
+    const list = [];
+    try {
+      const activeStr = localStorage.getItem('road_ranger_citizen_user');
+      if (activeStr) {
+        const u = JSON.parse(activeStr);
+        if (Array.isArray(u.complaints)) {
+          list.push(...u.complaints);
+        }
+      }
+      const storedUsers = localStorage.getItem('road_ranger_registered_users');
+      if (storedUsers) {
+        const users = JSON.parse(storedUsers);
+        users.forEach((u) => {
+          if (Array.isArray(u.complaints)) {
+            list.push(...u.complaints);
+          }
+        });
+      }
+    } catch (e) {}
+    const seen = new Set();
+    return list.filter((r) => {
+      if (!r || !r.id || seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+  };
+
   const fetchReports = async () => {
     setLoading(true);
+    const localCitizenReports = getLocalCitizenReports();
+    const fallbackList = [...localCitizenReports, ...SAMPLE_REPORTS];
+
     try {
       const res = await fetch(`${API_BASE}/api/reports?cluster=true&order_by_severity=true`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.length > 0) {
-          setReports(data);
+          const ids = new Set(data.map((d) => d.id));
+          const unmergedLocal = localCitizenReports.filter((r) => !ids.has(r.id));
+          setReports([...unmergedLocal, ...data]);
         } else {
-          setReports(SAMPLE_REPORTS);
+          setReports(fallbackList);
         }
       } else {
-        setReports(SAMPLE_REPORTS);
+        setReports(fallbackList);
       }
     } catch (err) {
-      console.warn("Could not reach backend API, loading offline demo data:", err);
-      setReports(SAMPLE_REPORTS);
+      setReports(fallbackList);
     } finally {
       setLoading(false);
     }
@@ -163,9 +195,24 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
       console.warn("Backend update failed, applying locally:", err);
     }
 
+    // Sync to local state
     setReports((prev) =>
       prev.map((r) => (r.id === reportId ? { ...r, status: nextStatus } : r))
     );
+
+    // Sync to localStorage so citizen sees updated status
+    try {
+      const activeStr = localStorage.getItem('road_ranger_citizen_user');
+      if (activeStr) {
+        const u = JSON.parse(activeStr);
+        if (Array.isArray(u.complaints)) {
+          u.complaints = u.complaints.map((c) =>
+            reportIds.includes(c.id) ? { ...c, status: nextStatus } : c
+          );
+          localStorage.setItem('road_ranger_citizen_user', JSON.stringify(u));
+        }
+      }
+    } catch (e) {}
 
     const count = report.report_count || 1;
     if (nextStatus === 'addressed') {

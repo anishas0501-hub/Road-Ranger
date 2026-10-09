@@ -23,8 +23,8 @@ export function CitizenAuth({ lang, t, onLoginSuccess, onBack }) {
   const [error, setError] = useState(null);
   const [otpSuccessMsg, setOtpSuccessMsg] = useState(null);
 
-  // Send OTP
-  const handleSendOtp = async (e) => {
+  // Send OTP (Purely client-side mock simulation)
+  const handleSendOtp = (e) => {
     e?.preventDefault();
     if (!regMobile || regMobile.trim().length < 7) {
       setError("Please enter a valid mobile number.");
@@ -33,97 +33,136 @@ export function CitizenAuth({ lang, t, onLoginSuccess, onBack }) {
     setError(null);
     setOtpSending(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mobile_number: regMobile.trim() })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setOtpSent(true);
-        setOtpSuccessMsg(`OTP sent! Use demo verification code: ${data.dummy_otp || '123456'}`);
-        setRegOtp(data.dummy_otp || '123456'); // prefill demo OTP for user convenience
-      } else {
-        setError(data.detail || "Failed to send OTP. Please try again.");
-      }
-    } catch (err) {
-      // Local fallback for offline/direct testing
+    // Simulate 1-second delay, auto-fill demo OTP, and allow user to continue
+    setTimeout(() => {
       setOtpSent(true);
-      setOtpSuccessMsg("OTP sent! Demo code: 123456");
       setRegOtp("123456");
-    } finally {
+      setOtpSuccessMsg("OTP sent! Verification code: 123456");
       setOtpSending(false);
-    }
+    }, 1000);
   };
 
-  // Login handler
-  const handleLogin = async (e) => {
+  // Login handler (Pure client-side authentication with localStorage)
+  const handleLogin = (e) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: loginIdentifier.trim(),
-          password: loginPassword
-        })
-      });
+    setTimeout(() => {
+      let matchedUser = null;
+      const idQuery = loginIdentifier.trim().toLowerCase();
 
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(data));
-        onLoginSuccess(data);
-      } else {
-        setError(data.detail || "Authentication failed. Please verify credentials.");
+      try {
+        // 1. Check registered users list in localStorage
+        const storedUsers = localStorage.getItem('road_ranger_registered_users');
+        if (storedUsers) {
+          const list = JSON.parse(storedUsers);
+          matchedUser = list.find(
+            (u) =>
+              (u.username && u.username.toLowerCase() === idQuery) ||
+              (u.mobile_number && u.mobile_number === idQuery) ||
+              (u.full_name && u.full_name.toLowerCase() === idQuery)
+          );
+        }
+
+        // 2. Check active citizen user in localStorage
+        if (!matchedUser) {
+          const activeStr = localStorage.getItem('road_ranger_citizen_user');
+          if (activeStr) {
+            const active = JSON.parse(activeStr);
+            if (
+              (active.username && active.username.toLowerCase() === idQuery) ||
+              (active.mobile_number && active.mobile_number === idQuery) ||
+              (active.full_name && active.full_name.toLowerCase() === idQuery)
+            ) {
+              matchedUser = active;
+            }
+          }
+        }
+      } catch (err) {}
+
+      // 3. Fallback: Accept any dummy credentials if none exist
+      if (!matchedUser) {
+        matchedUser = {
+          id: Date.now(),
+          full_name: loginIdentifier.trim() || 'Citizen Contributor',
+          mobile_number: '9876543210',
+          username: (loginIdentifier.trim() || 'citizen_user').toLowerCase().replace(/\s+/g, '_'),
+          password: loginPassword || 'DemoPassword#123',
+          profile_photo_url: null,
+          reward_points: 0,
+          complaints: []
+        };
       }
-    } catch (err) {
-      setError("Unable to connect to Road-Ranger server. Please verify backend is running.");
-    } finally {
+
+      try {
+        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(matchedUser));
+      } catch (err) {}
+
       setLoading(false);
-    }
+      // Immediately log in and route directly to the Citizen Dashboard
+      onLoginSuccess(matchedUser, 'dashboard');
+    }, 350);
   };
 
-  // Register handler
-  const handleRegister = async (e) => {
+  // Register handler (Pure client-side registration with localStorage)
+  const handleRegister = (e) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
+    if (!regFullName.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!regMobile.trim()) {
+      setError("Please enter your mobile number.");
+      return;
+    }
+    if (!regUsername.trim()) {
+      setError("Please choose a username.");
+      return;
+    }
+    if (!regPassword) {
+      setError("Please enter a password.");
+      return;
+    }
     if (!regOtp || regOtp.trim().length < 4) {
-      setError("Please enter the verification OTP.");
-      setLoading(false);
+      setError("Please enter the 4-6 digit verification OTP (e.g. 123456).");
       return;
     }
 
-    try {
-      const res = await fetch(`${API_BASE}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mobile_number: regMobile.trim(),
-          otp: regOtp.trim(),
-          full_name: regFullName.trim(),
-          username: regUsername.trim(),
-          password: regPassword
-        })
-      });
+    setLoading(true);
 
-      const data = await res.json();
-      if (res.ok) {
-        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(data));
-        onLoginSuccess(data);
-      } else {
-        setError(data.detail || "Registration failed. Please check inputs.");
-      }
-    } catch (err) {
-      setError("Server connection error during registration.");
-    } finally {
+    setTimeout(() => {
+      const newUser = {
+        id: Date.now(),
+        full_name: regFullName.trim(),
+        mobile_number: regMobile.trim(),
+        username: regUsername.trim().toLowerCase(),
+        password: regPassword,
+        profile_photo_url: null,
+        reward_points: 0,
+        complaints: []
+      };
+
+      try {
+        // Save to registered users list in localStorage
+        const storedUsers = localStorage.getItem('road_ranger_registered_users');
+        const usersList = storedUsers ? JSON.parse(storedUsers) : [];
+        const filtered = usersList.filter(
+          (u) => u.username !== newUser.username && u.mobile_number !== newUser.mobile_number
+        );
+        filtered.push(newUser);
+        localStorage.setItem('road_ranger_registered_users', JSON.stringify(filtered));
+
+        // Save active user in localStorage
+        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(newUser));
+      } catch (err) {}
+
       setLoading(false);
-    }
+      // Immediately log them in / redirect to the Citizen Dashboard
+      onLoginSuccess(newUser, 'dashboard');
+    }, 400);
   };
 
   // Quick fill demo user

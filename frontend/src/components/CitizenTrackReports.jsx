@@ -8,16 +8,52 @@ export function CitizenTrackReports({ user, t, lang }) {
   const [searchId, setSearchId] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'addressed'
 
+  const loadLocalReports = () => {
+    let localList = [];
+    try {
+      // 1. Check user.complaints
+      if (user?.complaints && Array.isArray(user.complaints) && user.complaints.length > 0) {
+        localList = user.complaints;
+      } else {
+        // 2. Check dedicated user reports in localStorage
+        const saved = localStorage.getItem(`road_ranger_reports_${user?.id}`);
+        if (saved) {
+          localList = JSON.parse(saved);
+        } else {
+          // 3. Check active citizen user in localStorage
+          const activeStr = localStorage.getItem('road_ranger_citizen_user');
+          if (activeStr) {
+            const active = JSON.parse(activeStr);
+            if (active.complaints && Array.isArray(active.complaints)) {
+              localList = active.complaints;
+            }
+          }
+        }
+      }
+    } catch (e) {}
+    return localList;
+  };
+
   const fetchUserReports = async () => {
     setLoading(true);
+    const localList = loadLocalReports();
+    setReports(localList);
+
+    // Optional background check with backend
     try {
-      const res = await fetch(`${API_BASE}/api/reports?user_id=${user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setReports(data);
+      if (user?.id) {
+        const res = await fetch(`${API_BASE}/api/reports?user_id=${user.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const localIds = new Set(localList.map((r) => r.id));
+            const merged = [...localList, ...data.filter((r) => !localIds.has(r.id))];
+            setReports(merged);
+          }
+        }
       }
     } catch (err) {
-      console.warn("Failed to fetch user reports:", err);
+      // Backend unavailable; local reports already set seamlessly
     } finally {
       setLoading(false);
     }
@@ -25,19 +61,7 @@ export function CitizenTrackReports({ user, t, lang }) {
 
   useEffect(() => {
     fetchUserReports();
-    // Poll for status updates
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE}/api/reports?user_id=${user.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setReports(data);
-        }
-      } catch (e) {}
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [user.id]);
+  }, [user?.id, user?.complaints]);
 
   const filteredReports = reports.filter((r) => {
     const matchesSearch = searchId.trim() === '' || 

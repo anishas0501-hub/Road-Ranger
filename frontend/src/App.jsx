@@ -10,7 +10,14 @@ import './App.css';
 function App() {
   const [lang, setLang] = useState('en'); // 'en' or 'mn'
   const [role, setRole] = useState(null); // null, 'citizen', or 'authority'
-  const [authorityUser, setAuthorityUser] = useState(null);
+  const [authorityUser, setAuthorityUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('road_ranger_authority_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  });
 
   const t = translations[lang] || translations.en;
 
@@ -28,9 +35,15 @@ function App() {
 
   const handleAuthorityLoginSuccess = (userData) => {
     setAuthorityUser(userData);
+    try {
+      localStorage.setItem('road_ranger_authority_user', JSON.stringify(userData));
+    } catch (e) {}
   };
 
   const handleAuthorityLogout = () => {
+    try {
+      localStorage.removeItem('road_ranger_authority_user');
+    } catch (e) {}
     setAuthorityUser(null);
     setRole(null);
   };

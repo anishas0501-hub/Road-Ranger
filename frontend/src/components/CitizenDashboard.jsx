@@ -9,48 +9,46 @@ export function CitizenDashboard({ user, onUpdateUser, onLogout, t, lang }) {
 
   // Avatar source resolution
   const resolvePhotoUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('data:')) return url;
     return resolveImageUrl(url);
   };
 
-  const handlePhotoUpload = async (e) => {
+  const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setUploadingPhoto(true);
     setPhotoSuccess(false);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+    // Read photo client-side via FileReader and persist in localStorage
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const updatedUser = { ...user, profile_photo_url: dataUrl };
+      onUpdateUser(updatedUser);
 
-      // 1. Upload to storage
-      const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-        method: "POST",
-        body: formData
-      });
+      try {
+        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(updatedUser));
+        const storedUsers = localStorage.getItem('road_ranger_registered_users');
+        if (storedUsers) {
+          const list = JSON.parse(storedUsers);
+          const idx = list.findIndex((u) => u.id === user.id || u.username === user.username);
+          if (idx !== -1) {
+            list[idx] = updatedUser;
+            localStorage.setItem('road_ranger_registered_users', JSON.stringify(list));
+          }
+        }
+      } catch (err) {}
 
-      if (!uploadRes.ok) throw new Error("Photo upload failed");
-      const uploadData = await uploadRes.json();
-      const newPhotoUrl = uploadData.image_url;
-
-      // 2. Patch user profile
-      const patchRes = await fetch(`${API_BASE}/api/users/${user.id}/photo`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile_photo_url: newPhotoUrl })
-      });
-
-      if (patchRes.ok) {
-        const updatedUser = await patchRes.json();
-        onUpdateUser(updatedUser);
-        setPhotoSuccess(true);
-        setTimeout(() => setPhotoSuccess(false), 3000);
-      }
-    } catch (err) {
-      console.warn("Failed to update profile photo:", err);
-    } finally {
+      setPhotoSuccess(true);
       setUploadingPhoto(false);
-    }
+      setTimeout(() => setPhotoSuccess(false), 3000);
+    };
+    reader.onerror = () => {
+      setUploadingPhoto(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const initials = (user.full_name || 'Citizen User')

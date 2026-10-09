@@ -61,23 +61,19 @@ export function CitizenPortal({ lang, t, onBack }) {
   const fileInputRef = useRef(null);
   const MAX_CHARS = 250;
 
-  // Sync user profile data (e.g. latest reward points)
-  const refreshUserData = async (userId) => {
-    if (!userId) return;
+  // Sync user profile data (e.g. latest reward points) from localStorage
+  const refreshUserData = () => {
     try {
-      const res = await fetch(`${API_BASE}/api/users/${userId}`);
-      if (res.ok) {
-        const fresh = await res.json();
+      const stored = localStorage.getItem('road_ranger_citizen_user');
+      if (stored) {
+        const fresh = JSON.parse(stored);
         setCurrentUser(fresh);
-        localStorage.setItem('road_ranger_citizen_user', JSON.stringify(fresh));
       }
     } catch (e) {}
   };
 
   useEffect(() => {
-    if (currentUser?.id) {
-      refreshUserData(currentUser.id);
-    }
+    refreshUserData();
   }, []);
 
   // Request GPS immediately on portal load
@@ -215,84 +211,78 @@ export function CitizenPortal({ lang, t, onBack }) {
     setSubmitting(true);
     setSubmitError(null);
 
+    // 1. Determine image URL
+    let finalImageUrl = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600";
+    if (uploadedMediaData?.image_url) {
+      finalImageUrl = uploadedMediaData.annotated_image_url || uploadedMediaData.image_url;
+    } else if (mediaPreview) {
+      finalImageUrl = mediaPreview;
+    }
+
+    const finalType = damageType === 'Others' ? (otherSpecify.trim() || 'Unspecified Road Issue') : damageType;
+    const finalSeverity = aiResult?.severityScore || (damageType === 'Pothole' ? 0.82 : 0.55);
+    const reportId = Math.floor(1000 + Math.random() * 9000);
+
+    const newReport = {
+      id: reportId,
+      user_id: currentUser ? currentUser.id : Date.now(),
+      latitude: coords ? coords.latitude : 24.8170,
+      longitude: coords ? coords.longitude : 93.9368,
+      image_url: finalImageUrl,
+      damage_type: finalType,
+      severity_score: finalSeverity,
+      status: "reported",
+      description: description.trim() || "Reported via Road-Ranger Citizen Portal",
+      created_at: new Date().toISOString()
+    };
+
+    // 2. Client-side update: increment reward_points += 50 and append to complaints list in localStorage
+    const newPoints = (currentUser?.reward_points || 0) + 50;
+    const prevComplaints = currentUser?.complaints || [];
+    const updatedComplaints = [newReport, ...prevComplaints];
+
+    const updatedUser = {
+      ...(currentUser || {}),
+      reward_points: newPoints,
+      complaints: updatedComplaints
+    };
+
+    setCurrentUser(updatedUser);
+    setSubmittedReport(newReport);
+
     try {
-      let finalImageUrl = "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=600";
+      localStorage.setItem('road_ranger_citizen_user', JSON.stringify(updatedUser));
+      localStorage.setItem('road_ranger_recent_ticket', String(reportId));
 
-      // 1. Upload or use existing media
-      if (uploadedMediaData?.image_url) {
-        finalImageUrl = uploadedMediaData.annotated_image_url || uploadedMediaData.image_url;
-      } else if (file) {
-        try {
-          const formData = new FormData();
-          formData.append("file", file);
-          const uploadRes = await fetch(`${API_BASE}/api/upload`, {
-            method: "POST",
-            body: formData
-          });
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            finalImageUrl = uploadData.annotated_image_url || uploadData.image_url;
-          }
-        } catch (uploadErr) {
-          console.warn("Backend upload failed, using fallback:", uploadErr);
-          if (mediaPreview) finalImageUrl = mediaPreview;
-        }
-      }
-
-      // 2. Prepare report payload with empirical AI severity score and authenticated user_id
-      const finalType = damageType === 'Others' ? (otherSpecify.trim() || 'Unspecified Road Issue') : damageType;
-      const finalSeverity = aiResult?.severityScore || (damageType === 'Pothole' ? 0.82 : 0.55);
-
-      const payload = {
-        user_id: currentUser ? currentUser.id : null,
-        latitude: coords ? coords.latitude : 24.8170,
-        longitude: coords ? coords.longitude : 93.9368,
-        image_url: finalImageUrl,
-        damage_type: finalType,
-        severity_score: finalSeverity,
-        status: "reported",
-        description: description.trim() || "Reported via Road-Ranger Citizen Portal"
-      };
-
-      // 3. Post to backend /api/reports
-      const response = await fetch(`${API_BASE}/api/reports`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error(`Server responded with ${response.status}`);
-      }
-
-      const created = await response.json();
-      setSubmittedReport(created);
-      localStorage.setItem('road_ranger_recent_ticket', String(created.id));
-
-      // 4. Automatically refresh user profile to show newly credited +50 reward points
       if (currentUser?.id) {
-        refreshUserData(currentUser.id);
+        localStorage.setItem(`road_ranger_reports_${currentUser.id}`, JSON.stringify(updatedComplaints));
+      }
+
+      const storedUsers = localStorage.getItem('road_ranger_registered_users');
+      if (storedUsers) {
+        const list = JSON.parse(storedUsers);
+        const idx = list.findIndex(u => u.id === currentUser?.id || u.username === currentUser?.username);
+        if (idx !== -1) {
+          list[idx] = updatedUser;
+        } else {
+          list.push(updatedUser);
+        }
+        localStorage.setItem('road_ranger_registered_users', JSON.stringify(list));
       }
     } catch (err) {
-      console.error("Submission failed:", err);
-      const fallbackReport = {
-        id: Math.floor(1000 + Math.random() * 9000),
-        user_id: currentUser?.id,
-        latitude: coords?.latitude || 24.8170,
-        longitude: coords?.longitude || 93.9368,
-        damage_type: damageType === 'Others' ? otherSpecify : damageType,
-        severity_score: aiResult?.severityScore || 0.78,
-        status: "reported",
-        description: description
-      };
-      setSubmittedReport(fallbackReport);
-      localStorage.setItem('road_ranger_recent_ticket', String(fallbackReport.id));
-      if (currentUser) {
-        setCurrentUser(prev => ({ ...prev, reward_points: (prev.reward_points || 0) + 50 }));
-      }
-    } finally {
-      setSubmitting(false);
+      console.warn("Storage update notice:", err);
     }
+
+    // 3. Optional background post (silently handled if backend is unreachable)
+    try {
+      fetch(`${API_BASE}/api/reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newReport)
+      }).catch(() => {});
+    } catch (e) {}
+
+    setSubmitting(false);
   };
 
   const refreshCurrentStatus = async (reportId) => {
@@ -327,9 +317,9 @@ export function CitizenPortal({ lang, t, onBack }) {
       <CitizenAuth
         lang={lang}
         t={t}
-        onLoginSuccess={(user) => {
+        onLoginSuccess={(user, targetSection = 'dashboard') => {
           setCurrentUser(user);
-          refreshUserData(user.id);
+          setActiveSection(targetSection);
         }}
         onBack={onBack}
       />

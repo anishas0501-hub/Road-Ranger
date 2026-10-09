@@ -15,31 +15,19 @@ export function AuthorityLogin({ lang, t, onLoginSuccess, onBack }) {
     setLoading(true);
     setError(null);
 
+    // Hardcode instant access: If admin or any non-empty input, immediately log in
     setTimeout(() => {
-      // Verification logic: ensure domain is official or authorized, and badge/otp is non-empty
-      const isEmailValid = email.includes('@pwd.gov.in') || email.includes('@gov.in') || email.includes('admin');
-      const isCodeValid = authMethod === 'badge' ? badgeCode.trim().length >= 4 : otpToken.trim().length === 6;
-
-      if (!isEmailValid) {
-        setError("Access Restricted: Only authorized @pwd.gov.in or government emails can access the command center.");
-        setLoading(false);
-        return;
-      }
-
-      if (!isCodeValid) {
-        setError(authMethod === 'badge' ? "Invalid PWD Officer Badge Identifier." : "Invalid 6-digit Gov OTP Token.");
-        setLoading(false);
-        return;
-      }
-
-      // Login success
       setLoading(false);
-      onLoginSuccess({
-        email,
-        badgeCode: authMethod === 'badge' ? badgeCode : `OTP-VERIFIED-${otpToken}`,
-        role: "Senior Highway Inspector"
-      });
-    }, 600);
+      const officerData = {
+        email: email.trim() || 'admin@pwd.gov.in',
+        badgeCode: authMethod === 'badge' ? (badgeCode.trim() || 'PWD-MN-ADMIN') : `OTP-VERIFIED-${otpToken || '849201'}`,
+        role: "Senior Highway Inspector (Admin)"
+      };
+      try {
+        localStorage.setItem('road_ranger_authority_user', JSON.stringify(officerData));
+      } catch (err) {}
+      onLoginSuccess(officerData);
+    }, 200);
   };
 
   return (

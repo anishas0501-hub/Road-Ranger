@@ -1,16 +1,24 @@
-# React + Vite
+# Road-Ranger frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+This is a standalone, light-themed frontend for the existing Road-Ranger FastAPI service. It does not modify the backend, database, schemas, or route behavior.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+From the project root:
 
-## React Compiler
+```bash
+python3 -m http.server 4173 --bind 0.0.0.0 --directory frontend
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Open `http://localhost:4173`.
 
-## Expanding the Oxlint configuration
+## Connect to FastAPI
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The app defaults to same-origin requests. When the API runs elsewhere, set the API base before `app.js` loads:
+
+```html
+<script>window.API_BASE = 'http://127.0.0.1:8000';</script>
+<script src="./app.js" defer></script>
+```
+
+The UI already maps to the existing endpoints for report creation and listing, media upload, status updates, citizen summaries and profiles, and citizen authentication-compatible account data. The authority workspace provides dashboard, queue, citizen ledger, analytics, report inspection and address actions. The citizen workspace provides landing selection, report creation, evidence upload, coordinate capture input, report tracking, rewards and account summary.

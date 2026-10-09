@@ -7,13 +7,23 @@ from sqlalchemy.orm import sessionmaker
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
+    # Clean whitespace and surrounding quotes
+    DATABASE_URL = DATABASE_URL.strip().strip('"').strip("'")
+    
     # Normalize postgres:// to postgresql:// (required by SQLAlchemy 1.4+ and 2.0+)
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    if DATABASE_URL.lower().startswith("postgres://"):
+        DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
     
     SQLALCHEMY_DATABASE_URL = DATABASE_URL
+
+    # Ensure SSL for cloud databases like Neon if not explicitly in URI
+    connect_args = {}
+    if "neon.tech" in DATABASE_URL and "sslmode" not in DATABASE_URL:
+        connect_args["sslmode"] = "require"
+
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
+        connect_args=connect_args,
         pool_pre_ping=True,
         pool_recycle=300
     )
@@ -24,9 +34,9 @@ else:
         DB_PATH = "/tmp/road_ranger.db"
     else:
         BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-        DB_PATH = os.path.join(BASE_DIR, "road_ranger.db")
+        DB_PATH = os.path.join(BASE_DIR, "roadranger.db")
         if not os.path.exists(DB_PATH):
-            alt_path = os.path.join(BASE_DIR, "roadranger.db")
+            alt_path = os.path.join(BASE_DIR, "road_ranger.db")
             if os.path.exists(alt_path):
                 DB_PATH = alt_path
 

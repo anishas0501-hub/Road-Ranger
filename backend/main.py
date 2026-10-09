@@ -2,21 +2,32 @@ import os
 import shutil
 import uuid
 import hashlib
+from contextlib import asynccontextmanager
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
-from database import engine, Base, get_db
+from database import engine, Base, get_db, SessionLocal
 import models
 import schemas
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+_db_initialized = False
 
-def ensure_db_migrations():
-    """Ensure newly introduced columns are present in SQLite tables"""
+def init_db():
+    """Auto-initialize database tables and handle schema migrations if needed."""
+    global _db_initialized
+    if _db_initialized:
+        return
+    try:
+        # Create all tables in PostgreSQL (Neon) or SQLite
+        Base.metadata.create_all(bind=engine)
+        _db_initialized = True
+        print("Database tables initialized successfully.")
+    except Exception as e:
+        print(f"Database initialization error: {e}")
+
     try:
         if engine.dialect.name == "sqlite":
             with engine.connect() as conn:
@@ -28,7 +39,19 @@ def ensure_db_migrations():
     except Exception as e:
         print(f"Migration notice: {e}")
 
-ensure_db_migrations()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Application startup event: auto-create database tables
+    init_db()
+    yield
+
+def get_db_with_init():
+    init_db()
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.strip().encode("utf-8")).hexdigest()
@@ -36,8 +59,11 @@ def hash_password(password: str) -> str:
 app = FastAPI(
     title="Road-Ranger API",
     description="AI-Enabled Road Damage Reporting & Detection API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
+
+app.dependency_overrides[get_db] = get_db_with_init
 
 # Configure CORS for React frontend (Vite default ports, Vercel production/preview, etc.)
 app.add_middleware(

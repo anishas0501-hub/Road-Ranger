@@ -1,6 +1,5 @@
 {
-  "framework": null,
-  "buildCommand": "echo 'Static build complete'",
-  "installCommand": "echo 'No install needed'",
+  "buildCommand": "echo 'Build output ready in dist'",
+  "outputDirectory": "dist",
   "cleanUrls": true
 }

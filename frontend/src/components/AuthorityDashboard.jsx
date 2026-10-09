@@ -15,8 +15,7 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react';
-
-const API_BASE = "http://127.0.0.1:8000";
+import { API_BASE, resolveImageUrl } from '../apiConfig';
 
 // Fallback seed reports in case backend is freshly launched with empty DB
 const SAMPLE_REPORTS = [
@@ -197,24 +196,6 @@ export function AuthorityDashboard({ user, lang, t, onLogout }) {
     if (!desc) return "No description provided.";
     if (desc.length <= 60) return desc;
     return desc.slice(0, 58) + "...";
-  };
-
-  // Helper to ensure valid, accessible image URLs with reliable fallback
-  const resolveImageUrl = (url) => {
-    if (!url || url === 'None' || url === 'null' || url === '' || url.includes("example.com")) {
-      return "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=1200&auto=format&fit=crop&q=80";
-    }
-    if (url.startsWith("/uploads/")) {
-      return `${API_BASE}${url}`;
-    }
-    if (url.startsWith("uploads/")) {
-      return `${API_BASE}/${url}`;
-    }
-    if (url.includes("/uploads/")) {
-      const parts = url.split("/uploads/");
-      return `${API_BASE}/uploads/${parts[1]}`;
-    }
-    return url;
   };
 
   // Filtered reports

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { User, Phone, Lock, KeyRound, ChevronLeft, AlertCircle, CheckCircle2, UserCheck, Shield } from 'lucide-react';
-
-const API_BASE = "http://127.0.0.1:8000";
+import { API_BASE } from '../apiConfig';
 
 export function CitizenAuth({ lang, t, onLoginSuccess, onBack }) {
   const [mode, setMode] = useState('login'); // 'login' or 'register'

@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User, Phone, Award, Camera, ShieldCheck, LogOut, CheckCircle2, FileText, Sparkles, RotateCw } from 'lucide-react';
-
-const API_BASE = "http://127.0.0.1:8000";
+import { API_BASE, resolveImageUrl } from '../apiConfig';
 
 export function CitizenDashboard({ user, onUpdateUser, onLogout, t, lang }) {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -10,9 +9,7 @@ export function CitizenDashboard({ user, onUpdateUser, onLogout, t, lang }) {
 
   // Avatar source resolution
   const resolvePhotoUrl = (url) => {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `${API_BASE}${url}`;
+    return resolveImageUrl(url);
   };
 
   const handlePhotoUpload = async (e) => {

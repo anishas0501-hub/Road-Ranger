@@ -18,12 +18,13 @@ Base.metadata.create_all(bind=engine)
 def ensure_db_migrations():
     """Ensure newly introduced columns are present in SQLite tables"""
     try:
-        with engine.connect() as conn:
-            cursor = conn.connection.cursor()
-            cols = [row[1] for row in cursor.execute("PRAGMA table_info(reports)").fetchall()]
-            if "user_id" not in cols:
-                cursor.execute("ALTER TABLE reports ADD COLUMN user_id INTEGER REFERENCES users(id)")
-                conn.connection.commit()
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                cursor = conn.connection.cursor()
+                cols = [row[1] for row in cursor.execute("PRAGMA table_info(reports)").fetchall()]
+                if "user_id" not in cols:
+                    cursor.execute("ALTER TABLE reports ADD COLUMN user_id INTEGER REFERENCES users(id)")
+                    conn.connection.commit()
     except Exception as e:
         print(f"Migration notice: {e}")
 
@@ -38,22 +39,28 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Configure CORS for React frontend (Vite default ports 5173, etc.)
+# Configure CORS for React frontend (Vite default ports, Vercel production/preview, etc.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_origin_regex=r"^https?://.*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Static directory for uploaded citizen media
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+# Static directory for uploaded citizen media (use /tmp on serverless Vercel to avoid read-only FS errors)
+if os.getenv("VERCEL"):
+    UPLOAD_DIR = "/tmp/uploads"
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get("/")
+@app.get("/api")
+@app.get("/api/")
 def read_root():
     return {
         "project": "Road-Ranger API",

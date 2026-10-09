@@ -19,8 +19,7 @@ import {
 import { CitizenAuth } from './CitizenAuth';
 import { CitizenTrackReports } from './CitizenTrackReports';
 import { CitizenDashboard } from './CitizenDashboard';
-
-const API_BASE = "http://127.0.0.1:8000";
+import { API_BASE, resolveImageUrl } from '../apiConfig';
 
 export function CitizenPortal({ lang, t, onBack }) {
   // Authentication state
@@ -163,7 +162,7 @@ export function CitizenPortal({ lang, t, onBack }) {
         setUploadedMediaData(data);
         
         if (data.annotated_image_url) {
-          setMediaPreview(`${API_BASE}${data.annotated_image_url}`);
+          setMediaPreview(resolveImageUrl(data.annotated_image_url));
         }
 
         setAiResult({
@@ -221,7 +220,7 @@ export function CitizenPortal({ lang, t, onBack }) {
 
       // 1. Upload or use existing media
       if (uploadedMediaData?.image_url) {
-        finalImageUrl = `${API_BASE}${uploadedMediaData.annotated_image_url || uploadedMediaData.image_url}`;
+        finalImageUrl = uploadedMediaData.annotated_image_url || uploadedMediaData.image_url;
       } else if (file) {
         try {
           const formData = new FormData();
@@ -232,7 +231,7 @@ export function CitizenPortal({ lang, t, onBack }) {
           });
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
-            finalImageUrl = `${API_BASE}${uploadData.annotated_image_url || uploadData.image_url}`;
+            finalImageUrl = uploadData.annotated_image_url || uploadData.image_url;
           }
         } catch (uploadErr) {
           console.warn("Backend upload failed, using fallback:", uploadErr);

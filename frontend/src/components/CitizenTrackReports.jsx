@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RotateCw, Search, Send, Clock, AlertTriangle, ExternalLink, MapPin, Award } from 'lucide-react';
-
-const API_BASE = "http://127.0.0.1:8000";
+import { API_BASE, resolveImageUrl } from '../apiConfig';
 
 export function CitizenTrackReports({ user, t, lang }) {
   const [reports, setReports] = useState([]);
@@ -39,12 +38,6 @@ export function CitizenTrackReports({ user, t, lang }) {
 
     return () => clearInterval(interval);
   }, [user.id]);
-
-  const resolveImageUrl = (img) => {
-    if (!img) return "https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=400";
-    if (img.startsWith('http://') || img.startsWith('https://')) return img;
-    return `${API_BASE}${img}`;
-  };
 
   const filteredReports = reports.filter((r) => {
     const matchesSearch = searchId.trim() === '' || 

@@ -3,7 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "echo 'Static build complete'",
-    "vite": "echo 'Static build complete'"
+    "build": "mkdir -p dist && cp -r frontend/* dist/"
   }
 }

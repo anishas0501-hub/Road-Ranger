@@ -1,5 +1,5 @@
 {
-  "buildCommand": "echo 'Build output ready in dist'",
+  "buildCommand": "mkdir -p dist && cp -r frontend/* dist/",
   "outputDirectory": "dist",
   "cleanUrls": true
 }

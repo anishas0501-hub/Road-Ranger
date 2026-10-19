@@ -1,8 +1,6 @@
 import os
 import shutil
 import uuid
-import hashlib
-import secrets
 from datetime import datetime
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
@@ -35,24 +33,11 @@ def auto_migrate():
 
 auto_migrate()
 
-# --- Password Utilities (PBKDF2 SHA-256 standard) ---
-def hash_password(password: str) -> str:
-    salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
-    return f"{salt}:{key.hex()}"
-
-def verify_password(password: str, hashed: str) -> bool:
-    try:
-        salt, key_hex = hashed.split(":", 1)
-        key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), 100000)
-        return secrets.compare_digest(key.hex(), key_hex)
-    except Exception:
-        return False
 
 
 app = FastAPI(
     title="Road-Ranger API",
-    description="AI-Enabled Road Damage Reporting & Detection API with Citizen Rewards and Auth",
+    description="AI-Enabled Road Damage Reporting & Detection API",
     version="1.1.0"
 )
 
@@ -81,109 +66,8 @@ def read_root():
     }
 
 
-# ==========================================
-# Task 1: Citizen Authentication & OTP
-# ==========================================
-
-# In-memory store for generated OTPs: {phone_number: otp}
-OTP_STORE = {}
-
-@app.post("/api/auth/send-otp")
-def send_otp(req: schemas.OTPRequest):
-    """
-    Simulates sending an OTP to the citizen's phone number.
-    Returns the simulated OTP (dummy 123456) for instant testing.
-    """
-    phone = req.phone_number.strip()
-    if not phone or len(phone) < 8:
-        raise HTTPException(status_code=400, detail="Invalid phone number format.")
-    
-    # Generate 6-digit OTP (for easy testing default is 123456 or custom)
-    dummy_otp = "123456"
-    OTP_STORE[phone] = dummy_otp
-    
-    return {
-        "message": f"OTP successfully sent to {phone}",
-        "phone_number": phone,
-        "dummy_otp": dummy_otp,
-        "hint": "Use dummy OTP 123456 to verify."
-    }
-
-
-@app.post("/api/auth/verify-otp")
-def verify_otp(req: schemas.OTPVerifyRequest):
-    """
-    Verifies the OTP entered by the citizen.
-    Accepts 123456 or the stored OTP for this phone.
-    """
-    phone = req.phone_number.strip()
-    entered_otp = req.otp.strip()
-    
-    valid_otp = OTP_STORE.get(phone, "123456")
-    if entered_otp == valid_otp or entered_otp == "123456":
-        return {
-            "verified": True,
-            "message": "OTP verified successfully. Proceed to account creation.",
-            "phone_number": phone
-        }
-    
-    raise HTTPException(status_code=400, detail="Invalid or expired OTP token. Please use 123456.")
-
-
-@app.post("/api/auth/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def register_user(req: schemas.UserRegisterRequest, db: Session = Depends(get_db)):
-    """
-    Completes citizen account registration after OTP verification.
-    Requires unique username and secure password.
-    """
-    username = req.username.strip().lower()
-    if len(username) < 3:
-        raise HTTPException(status_code=400, detail="Username must be at least 3 characters long.")
-    
-    if len(req.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
-
-    # Check if username already exists
-    existing = db.query(models.User).filter(models.User.username == username).first()
-    if existing:
-        raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken.")
-
-    pwd_hash = hash_password(req.password)
-    new_user = models.User(
-        username=username,
-        password_hash=pwd_hash,
-        phone_number=req.phone_number.strip(),
-        name=req.name.strip() if req.name else username.capitalize(),
-        profile_pic_url=req.profile_pic_url or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200",
-        total_rewards=0
-    )
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
-
-
-@app.post("/api/auth/login", response_model=schemas.UserResponse)
-def login_user(req: schemas.UserLoginRequest, db: Session = Depends(get_db)):
-    """
-    Citizen login with Username and Password.
-    """
-    username = req.username.strip().lower()
-    user = db.query(models.User).filter(models.User.username == username).first()
-    if not user or not verify_password(req.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid username or password.")
-
-    return user
-
-
-@app.get("/api/auth/users/{user_id}", response_model=schemas.UserResponse)
-def get_user_profile(user_id: int, db: Session = Depends(get_db)):
-    """Fetch current user profile details."""
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
+# Citizen sign-in and registration are frontend-only demo features.
+# No citizen authentication endpoints are exposed by this API.
 
 # ==========================================
 # Task 2: Complaint Submission & Reward Points
